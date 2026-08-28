@@ -109,7 +109,7 @@ SIMPLE_JWT = {
 
 CORS_ALLOWED_ORIGINS = os.environ.get(
     "CORS_ALLOWED_ORIGINS",
-    "http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003",
+    ",".join(f"http://localhost:{port}" for port in range(3000, 3010)),
 ).split(",")
 
 # Wallet-auth challenge lifetime.

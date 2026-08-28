@@ -7,11 +7,12 @@ import { Wallet01Icon, LockIcon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/Button";
 import { useAuth } from "@/lib/auth-context";
-import { isWalletAvailable } from "@/lib/wallet";
+import { useWalletAvailable } from "@/lib/wallet";
 
 export default function ConnectPage() {
   const { user, isConnecting, error, connect } = useAuth();
   const router = useRouter();
+  const walletAvailable = useWalletAvailable();
 
   useEffect(() => {
     if (user) router.push("/dashboard");
@@ -39,7 +40,7 @@ export default function ConnectPage() {
         </Button>
       </div>
 
-      {!isWalletAvailable() && (
+      {!walletAvailable && (
         <p className="text-body-sm text-coral mt-4">
           No Midnight wallet extension detected. Install Lace to continue.
         </p>

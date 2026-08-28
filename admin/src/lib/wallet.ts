@@ -18,6 +18,8 @@
  * seam flagged in backend/accounts/signature.py.
  */
 
+import { useSyncExternalStore } from "react";
+
 export interface MidnightConnectedApi {
   getUnshieldedAddress(): Promise<string>;
   signMessage?(message: string): Promise<string>;
@@ -76,4 +78,17 @@ export async function signChallenge(api: MidnightConnectedApi, message: string):
 
 export function isWalletAvailable(): boolean {
   return typeof window !== "undefined" && !!window.midnight && Object.keys(window.midnight).length > 0;
+}
+
+// useSyncExternalStore rather than a useState+useEffect pair: reading
+// `window` in render would mismatch server vs. client (SSR always
+// sees no wallet), and this is exactly the primitive React provides
+// for "browser-only value that needs a different snapshot during
+// SSR" without that mismatch or an extra re-render.
+export function useWalletAvailable(): boolean {
+  return useSyncExternalStore(
+    () => () => {},
+    () => isWalletAvailable(),
+    () => false
+  );
 }
