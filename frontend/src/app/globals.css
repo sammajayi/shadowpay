@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+/* ShadowPay design tokens — Acctual-derived (shadowpay-mvp-scope.md
+   section 7 / Appendix). Light theme only, deliberately — the
+   reference system commits to a single paper-white canvas. */
+:root {
+  --color-ink: #1e1e1e;
+  --color-carbon: #0f0f0f;
+  --color-midnight: #0d111b;
+  --color-smoke: #666666;
+  --color-fog: #8d8d8d;
+  --color-ash: #999999;
+  --color-mist: #ccd1da;
+  --color-paper: #ffffff;
+  --color-snow: #f7fafc;
+  --color-concrete: #afb0b1;
+  --color-electric-blue: #0098f2;
+  --color-iris: #6c56fc;
+  --color-magenta: #f200ca;
+  --color-leaf: #5d9c06;
+  --color-coral: #ff6363;
+  --color-ice: #cfeafa;
+  --color-lavender: #e1e0fc;
+  --color-blush: #f6d2f4;
+
+  --font-open-runde: var(--font-heading), ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-caveat: var(--font-signature), ui-sans-serif, system-ui, sans-serif;
+
+  --spacing-4: 4px; --spacing-8: 8px; --spacing-12: 12px; --spacing-16: 16px;
+  --spacing-20: 20px; --spacing-24: 24px; --spacing-32: 32px; --spacing-48: 48px;
+  --spacing-64: 64px; --spacing-80: 80px; --spacing-96: 96px;
+
+  --page-max-width: 1200px;
+  --section-gap: 96px;
+  --card-padding: 24px;
+  --element-gap: 12px;
+
+  --radius-cards: 16px;
+  --radius-icons: 888px;
+  --radius-images: 20px;
+  --radius-buttons: 100px;
+  --radius-largecards: 32px;
+
+  --shadow-subtle: rgba(10, 13, 20, 0.03) 0px 1px 2px 0px;
+  --shadow-subtle-2: rgb(36, 38, 40) 0px 0px 0px 1px, rgba(27, 28, 29, 0.48) 0px 1px 2px 0px;
+  --shadow-subtle-3: rgba(0, 0, 0, 0.06) 0px 2px 3px -1px;
+}
+
+@theme inline {
+  --color-ink: var(--color-ink);
+  --color-carbon: var(--color-carbon);
+  --color-midnight: var(--color-midnight);
+  --color-smoke: var(--color-smoke);
+  --color-fog: var(--color-fog);
+  --color-ash: var(--color-ash);
+  --color-mist: var(--color-mist);
+  --color-paper: var(--color-paper);
+  --color-snow: var(--color-snow);
+  --color-concrete: var(--color-concrete);
+  --color-electric-blue: var(--color-electric-blue);
+  --color-iris: var(--color-iris);
+  --color-magenta: var(--color-magenta);
+  --color-leaf: var(--color-leaf);
+  --color-coral: var(--color-coral);
+  --color-ice: var(--color-ice);
+  --color-lavender: var(--color-lavender);
+  --color-blush: var(--color-blush);
+
+  --font-sans: var(--font-open-runde);
+  --font-signature: var(--font-caveat);
+
+  --radius-card: var(--radius-cards);
+  --radius-icon: var(--radius-icons);
+  --radius-image: var(--radius-images);
+  --radius-button: var(--radius-buttons);
+  --radius-largecard: var(--radius-largecards);
+
+  --shadow-subtle: var(--shadow-subtle);
+  --shadow-subtle-2: var(--shadow-subtle-2);
+  --shadow-subtle-3: var(--shadow-subtle-3);
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-open-runde);
+  letter-spacing: -0.02em;
+}
+
+/* Type scale (section 7 Appendix) */
+.text-eyebrow { font-size: 11px; line-height: 1.62; letter-spacing: 0.22px; font-weight: 600; text-transform: uppercase; }
+.text-body-sm { font-size: 14px; line-height: 1.43; letter-spacing: -0.28px; font-weight: 500; }
+.text-body { font-size: 16px; line-height: 1.5; letter-spacing: -0.32px; font-weight: 500; }
+.text-body-lg { font-size: 22px; line-height: 1.29; font-weight: 500; }
+.text-subheading { font-size: 24px; line-height: 1.33; letter-spacing: -0.72px; font-weight: 600; }
+.text-heading-sm { font-size: 32px; line-height: 1.25; letter-spacing: -0.96px; font-weight: 600; }
+.text-heading { font-size: 40px; line-height: 1.2; letter-spacing: -1.2px; font-weight: 600; }
+.text-heading-lg { font-size: 48px; line-height: 1.17; letter-spacing: -1.44px; font-weight: 600; }
+.text-display { font-size: 64px; line-height: 1.13; letter-spacing: -1.92px; font-weight: 600; }

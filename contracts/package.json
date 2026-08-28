@@ -1,0 +1,11 @@
+{
+  "name": "@shadowpay/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ShadowPay Compact smart contracts (Midnight testnet)",
+  "scripts": {
+    "compile": "compact compile src/shadowpay.compact ./build",
+    "compile:skip-zk": "compact compile --skip-zk src/shadowpay.compact ./build",
+    "clean": "rm -rf build"
+  }
+}

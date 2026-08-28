@@ -1,0 +1,250 @@
+pragma language_version >= 0.16;
+
+import CompactStandardLibrary;
+
+// ============================================================
+// Public ledger state
+// (Section 3 of shadowpay-mvp-scope.md — the ONLY things any
+// party may ever see are booleans and aggregate figures. No
+// purchase amount, no merchant identity for a specific purchase,
+// no score, ever lands here.)
+// ============================================================
+
+// Verified merchant registry — merchant id -> verified flag.
+export ledger merchantRegistry: Map<Bytes<32>, Boolean>;
+
+// Total pool balance available for lending.
+export ledger poolLiquidity: Uint<64>;
+
+// agreement id -> whether an agreement exists at all (no detail).
+export ledger agreementExists: Map<Bytes<32>, Boolean>;
+
+// agreement id -> last payment on-time status.
+export ledger onTimeStatus: Map<Bytes<32>, Boolean>;
+
+// agreement id -> how many installments have been recorded paid so
+// far (0-4). Public only as a count — which installment, its amount,
+// and its due date all stay private. Also doubles as replay
+// protection: recordPayment only accepts the next installment in
+// sequence for a given agreement.
+export ledger installmentsPaid: Map<Bytes<32>, Uint<8>>;
+
+// Admin-tunable eligibility threshold (public — the score itself
+// never is). Lets the risk engine's bar move without redeploying.
+export ledger eligibilityThreshold: Uint<32>;
+
+// Pseudonymous per-user key -> last eligibility check result.
+// Keyed off a hash of the user's local secret key, never their
+// real identity, so this reveals pass/fail only to someone who
+// already holds that secret.
+export ledger eligibilityStatus: Map<Bytes<32>, Boolean>;
+
+constructor(initialThreshold: Uint<32>) {
+  eligibilityThreshold = disclose(initialThreshold);
+  poolLiquidity = 0;
+}
+
+// ============================================================
+// Witnesses — private, off-chain data supplied by the caller's
+// TypeScript driver (in our case, populated by the Django risk
+// engine result) at proof-generation time. Never touch the chain.
+// ============================================================
+
+// Local secret key used to derive a pseudonymous per-user handle,
+// same pattern as the Midnight bulletin-board reference contract.
+witness localSecretKey(): Bytes<32>;
+
+// The three private risk-engine signals from section 4 of the
+// scope doc: wallet-age signal, past on-chain repayment signal,
+// self-reported income-bracket signal. Never disclosed on-chain,
+// individually or combined.
+witness eligibilityScoreInputs(): [Uint<32>, Uint<32>, Uint<32>];
+
+// ============================================================
+// checkEligibility circuit — THE technical gate for the hackathon.
+// Proves score >= threshold on-chain without revealing the score
+// or its inputs. See shadowpay-mvp-scope.md section 3.
+// ============================================================
+
+// Derives a pseudonymous ledger key for the caller from their
+// local secret key. Never reveals the underlying identity.
+circuit userKey(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "shadowpay:eligibility:"), sk]);
+}
+
+// Combines the three private risk signals into a single score.
+// Additive v1 to match the rules-based risk engine (section 4);
+// revisit weighting once the Django risk engine is built.
+circuit computeScore(inputs: [Uint<32>, Uint<32>, Uint<32>]): Uint<32> {
+  const [walletAgeSignal, repaymentSignal, incomeSignal] = inputs;
+  return (walletAgeSignal + repaymentSignal + incomeSignal) as Uint<32>;
+}
+
+export circuit checkEligibility(): Boolean {
+  const inputs = eligibilityScoreInputs();
+  const score = computeScore(inputs);
+  const passed = score >= eligibilityThreshold;
+  const key = userKey(localSecretKey());
+  eligibilityStatus.insert(disclose(key), disclose(passed));
+  return disclose(passed);
+}
+
+// ============================================================
+// createAgreement circuit.
+//
+// Commits a private purchase (amount, installment schedule,
+// merchant) to a single opaque hash and publishes only:
+//   - agreementExists[id] = true
+//   - the pool debit (poolLiquidity decreases by the amount)
+//
+// Privacy design: the purchase detail (amount, schedule, which
+// merchant) is a witness — it is supplied to, and only ever lives
+// in, the local TypeScript drivers of the two parties who already
+// know it going in: the buyer and the merchant they're checking
+// out with. It is never written to any ledger field, so there is
+// nothing on public state to decrypt in the first place. That's
+// what makes the "only the user and that specific merchant" scoping
+// hold — not a selective on-chain decryption key, but the absence
+// of a public copy at all. The Django agreement-orchestration
+// service (backend build order item 2) is what actually gets the
+// plaintext item/merchant display metadata from buyer to merchant,
+// end-to-end encrypted off-chain and keyed per user+merchant pair
+// (scope doc section 4) — the same trust boundary as this circuit,
+// just off-chain.
+//
+// Known Wave 1 simplification: poolLiquidity is a single public
+// running total, so the debit amount is disclosed to update it.
+// The amount is not linked on-chain to the buyer or merchant
+// identity (both stay inside the opaque agreement id), but a
+// real deployment would move pool accounting into a shielded
+// mechanism to avoid even the bare amount being publicly visible.
+// ============================================================
+
+struct Installment {
+  amount: Uint<64>,
+  dueDate: Uint<32>,
+}
+
+struct PurchaseDetails {
+  amount: Uint<64>,
+  merchantId: Bytes<32>,
+  installments: Vector<4, Installment>,
+}
+
+struct AgreementCommitmentInput {
+  buyerKey: Bytes<32>,
+  merchantId: Bytes<32>,
+  amount: Uint<64>,
+  installments: Vector<4, Installment>,
+  salt: Bytes<32>,
+}
+
+// The full purchase — amount, "Pay in 4" schedule, and which
+// merchant it's with. Never disclosed on-chain.
+witness purchaseDetails(): PurchaseDetails;
+
+// Randomness so two identical purchases don't collide/leak via a
+// repeated commitment hash.
+witness agreementSalt(): Bytes<32>;
+
+// Derives the public agreement id: a hash binding the buyer,
+// merchant, amount, schedule, and salt together. This IS the
+// "commitment" from the scope doc — it's what goes on-chain, and
+// it reveals nothing about its inputs.
+circuit agreementId(input: AgreementCommitmentInput): Bytes<32> {
+  return persistentHash<AgreementCommitmentInput>(input);
+}
+
+export circuit createAgreement(): Bytes<32> {
+  const buyerKey = userKey(localSecretKey());
+  const purchase = purchaseDetails();
+  const salt = agreementSalt();
+
+  // Merchant-verified status is intentionally NOT checked here: doing
+  // so would require passing purchase.merchantId into a public Map
+  // lookup, which the compiler correctly flags as a disclosure — it
+  // would put the merchant identity for this specific purchase on
+  // chain and break the exact privacy claim this circuit exists to
+  // protect. The Django agreement-orchestration service checks
+  // merchantRegistry before it ever offers checkout for a merchant,
+  // so an unverified merchant can't reach proof generation in the
+  // first place. On-chain enforcement of this without disclosure
+  // would need private-set-membership (e.g. a Merkle tree the buyer
+  // proves a private path into) — a Wave 2 hardening item.
+  assert(poolLiquidity >= purchase.amount, "insufficient pool liquidity");
+
+  const id = disclose(agreementId(AgreementCommitmentInput {
+    buyerKey: buyerKey,
+    merchantId: purchase.merchantId,
+    amount: purchase.amount,
+    installments: purchase.installments,
+    salt: salt,
+  }));
+  assert(!agreementExists.member(id) || !agreementExists.lookup(id), "agreement already exists");
+
+  agreementExists.insert(id, true);
+  poolLiquidity = disclose(poolLiquidity - purchase.amount);
+
+  return id;
+}
+
+// ============================================================
+// recordPayment circuit.
+//
+// Proves an installment was paid on time against the private
+// schedule, publishes only:
+//   - onTimeStatus[id] = <was this installment on time>
+//   - installmentsPaid[id] incremented by one
+//
+// Recomputes the same agreementId from the same purchase/salt
+// witnesses createAgreement used, so this circuit can't be pointed
+// at an agreement that doesn't match the caller's own private
+// schedule — there is no separate "which agreement" input to trust,
+// the commitment itself is the proof of which agreement this is.
+// ============================================================
+
+// Which installment (0-3) is being paid, and when. Never disclosed
+// on-chain — only the resulting on-time boolean is.
+witness paymentInstallmentIndex(): Uint<8>;
+witness paymentDate(): Uint<32>;
+
+// Selects installments[index] using only compile-time-constant
+// indices (0..3), rather than relying on dynamic Vector subscripting
+// with a private runtime index — this is the standard ZK-circuit
+// selection pattern and sidesteps any ambiguity about whether the
+// language supports dynamic indexing.
+circuit selectInstallment(installments: Vector<4, Installment>, index: Uint<8>): Installment {
+  return index == 0 ? installments[0]
+    : index == 1 ? installments[1]
+    : index == 2 ? installments[2]
+    : installments[3];
+}
+
+export circuit recordPayment(): Boolean {
+  const buyerKey = userKey(localSecretKey());
+  const purchase = purchaseDetails();
+  const salt = agreementSalt();
+
+  const id = disclose(agreementId(AgreementCommitmentInput {
+    buyerKey: buyerKey,
+    merchantId: purchase.merchantId,
+    amount: purchase.amount,
+    installments: purchase.installments,
+    salt: salt,
+  }));
+  assert(agreementExists.member(id) && agreementExists.lookup(id), "agreement does not exist");
+
+  const index = paymentInstallmentIndex();
+  assert(index < 4, "invalid installment index");
+
+  const alreadyPaid = installmentsPaid.member(id) ? installmentsPaid.lookup(id) : 0;
+  assert(index == alreadyPaid, "installments must be paid in order, and not twice");
+
+  const installment = selectInstallment(purchase.installments, index);
+  const paidOnTime = disclose(paymentDate() <= installment.dueDate);
+
+  onTimeStatus.insert(id, paidOnTime);
+  installmentsPaid.insert(id, disclose((index + 1) as Uint<8>));
+
+  return paidOnTime;
+}

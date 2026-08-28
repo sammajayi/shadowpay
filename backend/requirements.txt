@@ -1,0 +1,8 @@
+Django==6.1
+djangorestframework==3.18.0
+djangorestframework-simplejwt==5.5.1
+psycopg2-binary==2.9.12
+cryptography==50.0.1
+python-dotenv==1.2.3
+django-cors-headers==4.9.0
+PyNaCl==1.6.2

@@ -1,0 +1,29 @@
+from django.urls import path
+
+from .views import (
+    ConfirmAgreementView,
+    ConfirmPaymentView,
+    InitiateAgreementView,
+    InitiatePaymentView,
+    MerchantAgreementDetailView,
+    MerchantAgreementsView,
+    MerchantStatsView,
+    MyAgreementDetailView,
+    MyAgreementsView,
+)
+
+urlpatterns = [
+    path("initiate/", InitiateAgreementView.as_view(), name="agreement-initiate"),
+    path("<uuid:agreement_id>/confirm/", ConfirmAgreementView.as_view(), name="agreement-confirm"),
+    path("<uuid:agreement_id>/payments/initiate/", InitiatePaymentView.as_view(), name="payment-initiate"),
+    path(
+        "<uuid:agreement_id>/payments/<uuid:payment_id>/confirm/",
+        ConfirmPaymentView.as_view(),
+        name="payment-confirm",
+    ),
+    path("mine/", MyAgreementsView.as_view(), name="agreements-mine"),
+    path("mine/<uuid:agreement_id>/", MyAgreementDetailView.as_view(), name="agreement-mine-detail"),
+    path("merchant/", MerchantAgreementsView.as_view(), name="agreements-merchant"),
+    path("merchant/stats/", MerchantStatsView.as_view(), name="agreements-merchant-stats"),
+    path("merchant/<uuid:agreement_id>/", MerchantAgreementDetailView.as_view(), name="agreement-merchant-detail"),
+]

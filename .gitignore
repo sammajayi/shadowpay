@@ -1,0 +1,30 @@
+# Contracts
+contracts/build/
+
+# Node
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+npm-debug.log*
+
+# Python / Django
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.sqlite3
+staticfiles/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
