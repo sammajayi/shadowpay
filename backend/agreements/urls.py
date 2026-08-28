@@ -10,6 +10,8 @@ from .views import (
     MerchantStatsView,
     MyAgreementDetailView,
     MyAgreementsView,
+    VendorPayoutReconciliationView,
+    VendorStatsView,
 )
 
 urlpatterns = [
@@ -26,4 +28,6 @@ urlpatterns = [
     path("merchant/", MerchantAgreementsView.as_view(), name="agreements-merchant"),
     path("merchant/stats/", MerchantStatsView.as_view(), name="agreements-merchant-stats"),
     path("merchant/<uuid:agreement_id>/", MerchantAgreementDetailView.as_view(), name="agreement-merchant-detail"),
+    path("vendor/stats/", VendorStatsView.as_view(), name="agreements-vendor-stats"),
+    path("vendor/payouts/", VendorPayoutReconciliationView.as_view(), name="agreements-vendor-payouts"),
 ]

@@ -27,7 +27,7 @@ boundary (separate Vercel projects, separate auth scopes) and not just in-app ro
 - [x] `recordPayment` circuit — compiles end-to-end with real prover/verifier keys
 - [x] `recordPayment` backend orchestration + repayment dashboard UI — smoke-tested (sequencing, on-time/late, agreement auto-completion)
 - [x] Merchant view (`/merchant`) — API-key auth, own stats + agreements + installment timeline, builds clean, backend endpoints verified with a real key
-- [ ] Vendor view
+- [x] Vendor view (`/vendor`) — API-key auth, roster + aggregate stats + payout reconciliation, all four endpoints verified with a real key
 - [ ] Admin view
 
 ## Wave 2 (not built in Wave 1)

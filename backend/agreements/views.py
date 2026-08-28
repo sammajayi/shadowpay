@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from merchants.models import Merchant
-from merchants.permissions import IsMerchant
+from merchants.permissions import IsMerchant, IsVendor
 
 from . import services
 from .models import Agreement, Payment
@@ -176,3 +176,60 @@ class MerchantStatsView(APIView):
                 "on_time_rate": (on_time_count / len(payments)) if payments else None,
             }
         )
+
+
+class VendorStatsView(APIView):
+    """Aggregate volume and on-time rate across the vendor's whole
+    merchant roster — aggregate only, never a drill-down into any one
+    merchant's or user's data (scope doc section 6). Note this never
+    returns anything grouped by merchant; if it ever needs to, that's
+    a deliberate product decision, not a default to add casually —
+    a vendor seeing "merchant X moves $Y" is a real privacy narrowing
+    even without amounts/identities of individual purchases."""
+
+    permission_classes = [IsVendor]
+
+    def get(self, request):
+        agreements = Agreement.objects.filter(merchant__vendor=request.auth.vendor)
+        active_or_completed = agreements.filter(
+            Q(status=Agreement.Status.ACTIVE) | Q(status=Agreement.Status.COMPLETED)
+        )
+        total_volume = sum(a.get_amount() for a in active_or_completed)
+        payments = [p for a in active_or_completed for p in a.payments.filter(on_time__isnull=False)]
+        on_time_count = sum(1 for p in payments if p.on_time)
+
+        return Response(
+            {
+                "merchant_count": request.auth.vendor.merchants.count(),
+                "agreement_count": active_or_completed.count(),
+                "total_volume": total_volume,
+                "on_time_rate": (on_time_count / len(payments)) if payments else None,
+            }
+        )
+
+
+class VendorPayoutReconciliationView(APIView):
+    """Per-merchant payout counts/volume across the roster — still
+    aggregate per merchant, never a purchase-level breakdown. This is
+    the one vendor endpoint that names individual merchants (their
+    onboarding identity is not itself private — only their customers'
+    purchases are), so it deliberately stops at counts and totals."""
+
+    permission_classes = [IsVendor]
+
+    def get(self, request):
+        rows = []
+        for merchant in request.auth.vendor.merchants.all():
+            settled = Agreement.objects.filter(
+                merchant=merchant, status__in=[Agreement.Status.ACTIVE, Agreement.Status.COMPLETED]
+            )
+            rows.append(
+                {
+                    "merchant_id": str(merchant.id),
+                    "merchant_name": merchant.name,
+                    "verified": merchant.verified,
+                    "agreement_count": settled.count(),
+                    "total_volume": sum(a.get_amount() for a in settled),
+                }
+            )
+        return Response(rows)
