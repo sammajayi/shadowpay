@@ -20,8 +20,9 @@ dashboard. Design tokens from `shadowpay-mvp-scope.md` section 7 / Appendix
   arbitrary-message-signing method name (`signMessage`) is a best-effort placeholder
   pending verification against a real Lace install and the `@midnight-ntwrk/dapp-connector-api`
   types. Same seam as `backend/accounts/signature.py` — firm up both together.
-- **`lib/contract.ts`** — `checkEligibility`/`createAgreement` are NOT wired to the
-  real deployed contract yet (no testnet deployment exists). They simulate proof
+- **`lib/contract.ts`** — none of the 4 circuits (`checkEligibility`,
+  `createAgreement`, `recordPayment`, `closeAgreement`) are wired to the real
+  deployed contract yet (no testnet deployment exists). They simulate proof
   generation (delay + plausible result shape) so every screen can be built and
   reviewed against the real response shape now. Swapping in real
   `@midnight-ntwrk/midnight-js-contracts` calls is separate, non-trivial work.

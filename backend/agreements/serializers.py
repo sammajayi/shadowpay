@@ -52,6 +52,18 @@ class PaymentSerializer(serializers.Serializer):
     on_time = serializers.BooleanField(allow_null=True)
 
 
+class CloseAgreementWitnessResponseSerializer(serializers.Serializer):
+    agreement_id = serializers.CharField()
+    merchant_id = serializers.CharField()
+    amount = serializers.IntegerField()
+    installments = InstallmentSerializer(many=True)
+    salt = serializers.CharField()
+
+
+class ConfirmCloseSerializer(serializers.Serializer):
+    tx_hash = serializers.CharField(max_length=128)
+
+
 class AgreementSummarySerializer(serializers.ModelSerializer):
     """Public-shaped summary — matches what the chain itself would
     reveal (existence + status), safe for any authorized viewer scoped
@@ -59,7 +71,7 @@ class AgreementSummarySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Agreement
-        fields = ["id", "status", "onchain_agreement_id", "created_at", "confirmed_at"]
+        fields = ["id", "status", "onchain_agreement_id", "created_at", "confirmed_at", "onchain_closed_at"]
         read_only_fields = fields
 
 

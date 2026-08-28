@@ -41,6 +41,12 @@ class Agreement(models.Model):
     onchain_tx_hash = models.CharField(max_length=128, blank=True, default="")
     disputed = models.BooleanField(default=False)
 
+    # Set once closeAgreement has actually been run and confirmed —
+    # distinct from status=COMPLETED, which only means all 4
+    # installments are paid and closing is now possible.
+    onchain_closed_at = models.DateTimeField(null=True, blank=True)
+    onchain_close_tx_hash = models.CharField(max_length=128, blank=True, default="")
+
     encrypted_amount = models.TextField()
     encrypted_item_description = models.TextField()
     encrypted_merchant_display_name = models.TextField()

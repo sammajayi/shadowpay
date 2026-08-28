@@ -204,6 +204,7 @@ export interface AgreementDetail {
   onchain_agreement_id: string;
   created_at: string;
   confirmed_at: string | null;
+  onchain_closed_at: string | null;
   amount: number;
   item_description: string;
   merchant_display_name: string;
@@ -241,6 +242,29 @@ export function confirmPayment(agreementId: string, paymentId: string, onTime: b
   return request<AgreementDetail>(`/api/agreements/${agreementId}/payments/${paymentId}/confirm/`, {
     method: "POST",
     body: { on_time: onTime, tx_hash: txHash },
+  });
+}
+
+// ---- Close (closeAgreement) ----
+
+export interface CloseAgreementWitness {
+  agreement_id: string;
+  merchant_id: string;
+  amount: number;
+  installments: Installment[];
+  salt: string;
+}
+
+export function initiateClose(agreementId: string) {
+  return request<CloseAgreementWitness>(`/api/agreements/${agreementId}/close/initiate/`, {
+    method: "POST",
+  });
+}
+
+export function confirmClose(agreementId: string, txHash: string) {
+  return request<AgreementDetail>(`/api/agreements/${agreementId}/close/confirm/`, {
+    method: "POST",
+    body: { tx_hash: txHash },
   });
 }
 

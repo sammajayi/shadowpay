@@ -12,7 +12,9 @@ from .models import Agreement, Payment
 from .serializers import (
     AgreementDetailSerializer,
     AgreementSummarySerializer,
+    CloseAgreementWitnessResponseSerializer,
     ConfirmAgreementSerializer,
+    ConfirmCloseSerializer,
     ConfirmPaymentSerializer,
     CreateAgreementWitnessResponseSerializer,
     InitiateAgreementSerializer,
@@ -130,6 +132,42 @@ class ConfirmPaymentView(APIView):
             tx_hash=serializer.validated_data["tx_hash"],
         )
         agreement = get_object_or_404(Agreement, id=agreement_id, user=request.user)
+        return Response(AgreementDetailSerializer(agreement).data)
+
+
+class InitiateCloseView(APIView):
+    """Buyer-initiated: validates the agreement is ready to close (all
+    4 installments paid, not already closed) and returns the witness
+    payload for the closeAgreement proof."""
+
+    def post(self, request, agreement_id):
+        agreement = get_object_or_404(Agreement, id=agreement_id, user=request.user)
+        try:
+            payload = services.initiate_close(agreement=agreement)
+        except services.AgreementNotReadyToClose as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except services.AgreementAlreadyClosed as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        response = CloseAgreementWitnessResponseSerializer(
+            {
+                "agreement_id": payload.agreement_id,
+                "merchant_id": payload.merchant_id,
+                "amount": payload.amount,
+                "installments": payload.installments,
+                "salt": payload.salt,
+            }
+        )
+        return Response(response.data, status=status.HTTP_201_CREATED)
+
+
+class ConfirmCloseView(APIView):
+    def post(self, request, agreement_id):
+        agreement = get_object_or_404(Agreement, id=agreement_id, user=request.user)
+        serializer = ConfirmCloseSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        agreement = services.confirm_close(agreement=agreement, tx_hash=serializer.validated_data["tx_hash"])
         return Response(AgreementDetailSerializer(agreement).data)
 
 

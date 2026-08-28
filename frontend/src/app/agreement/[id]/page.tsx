@@ -3,11 +3,18 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Share01Icon } from "@hugeicons/core-free-icons";
+import { Share01Icon, CheckmarkCircle02Icon } from "@hugeicons/core-free-icons";
 
 import { useAuth } from "@/lib/auth-context";
-import { confirmPayment, getMyAgreementDetail, initiatePayment, type AgreementDetail } from "@/lib/api";
-import { runRecordPaymentCircuit } from "@/lib/contract";
+import {
+  confirmClose,
+  confirmPayment,
+  getMyAgreementDetail,
+  initiateClose,
+  initiatePayment,
+  type AgreementDetail,
+} from "@/lib/api";
+import { runCloseAgreementCircuit, runRecordPaymentCircuit } from "@/lib/contract";
 import { toEpochDay, todayEpochDay } from "@/lib/date";
 import { DataRow } from "@/components/PrivacyField";
 import { ProofStatusBadge } from "@/components/ProofStatusBadge";
@@ -21,6 +28,7 @@ export default function AgreementDetailPage({ params }: { params: Promise<{ id: 
   const [agreement, setAgreement] = useState<AgreementDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPaying, setIsPaying] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
   function load() {
     getMyAgreementDetail(id)
@@ -57,12 +65,29 @@ export default function AgreementDetailPage({ params }: { params: Promise<{ id: 
     }
   }
 
+  async function handleClose() {
+    if (!agreement) return;
+    setError(null);
+    setIsClosing(true);
+    try {
+      await initiateClose(agreement.id);
+      const result = await runCloseAgreementCircuit();
+      const updated = await confirmClose(agreement.id, result.txHash);
+      setAgreement(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not close agreement");
+    } finally {
+      setIsClosing(false);
+    }
+  }
+
   if (!user) return null;
   if (error && !agreement) return <p className="text-body-sm text-coral py-12">{error}</p>;
   if (!agreement) return <p className="text-body-sm text-smoke py-12">Loading…</p>;
 
   const paidCount = agreement.payments.filter((p) => p.paid_at).length;
   const canPayNext = agreement.status === "active" && paidCount < agreement.installments.length;
+  const canClose = agreement.status === "completed" && !agreement.onchain_closed_at;
 
   return (
     <div className="max-w-lg mx-auto py-12">
@@ -72,14 +97,20 @@ export default function AgreementDetailPage({ params }: { params: Promise<{ id: 
       <div className="mt-6">
         <ProofStatusBadge
           status="verified"
-          label={agreement.status === "completed" ? "Agreement completed" : "Agreement committed on-chain"}
+          label={
+            agreement.onchain_closed_at
+              ? "Agreement closed on-chain"
+              : agreement.status === "completed"
+                ? "Agreement completed — ready to close"
+                : "Agreement committed on-chain"
+          }
         />
       </div>
 
       <div className="mt-6 rounded-card bg-paper border border-mist/60 shadow-[var(--shadow-subtle)] p-6">
         <DataRow kind="private" label="Item" value={agreement.item_description} />
         <DataRow kind="private" label="Amount" value={`$${agreement.amount.toLocaleString()}`} />
-        <DataRow kind="public" label="Agreement exists" value="true" />
+        <DataRow kind="public" label="Agreement exists" value={agreement.onchain_closed_at ? "false" : "true"} />
         <DataRow
           kind="public"
           label="Agreement id"
@@ -101,6 +132,24 @@ export default function AgreementDetailPage({ params }: { params: Promise<{ id: 
             <p className="text-body-sm text-fog text-center mt-2">
               Only whether this payment was on time becomes public — never the amount.
             </p>
+          </div>
+        )}
+
+        {canClose && (
+          <div className="mt-6">
+            <Button variant="primary" className="w-full" onClick={handleClose} disabled={isClosing}>
+              {isClosing ? "Generating privacy proof…" : "Close agreement"}
+            </Button>
+            <p className="text-body-sm text-fog text-center mt-2">
+              Proves all 4 installments were fulfilled and marks the agreement closed on-chain.
+            </p>
+          </div>
+        )}
+
+        {agreement.onchain_closed_at && (
+          <div className="mt-6 flex items-center justify-center gap-2 text-body-sm text-leaf">
+            <HugeiconsIcon icon={CheckmarkCircle02Icon} size={16} strokeWidth={2} />
+            Closed {new Date(agreement.onchain_closed_at).toLocaleDateString()}
           </div>
         )}
 

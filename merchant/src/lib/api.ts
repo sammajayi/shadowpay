@@ -71,6 +71,7 @@ export interface AgreementDetail {
   onchain_agreement_id: string;
   created_at: string;
   confirmed_at: string | null;
+  onchain_closed_at: string | null;
   amount: number;
   item_description: string;
   merchant_display_name: string;

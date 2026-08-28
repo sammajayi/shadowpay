@@ -79,3 +79,14 @@ export async function runRecordPaymentCircuit(params: {
     txHash: `0x${randomHex(32)}`,
   };
 }
+
+export interface CloseAgreementResult {
+  txHash: string;
+}
+
+export async function runCloseAgreementCircuit(): Promise<CloseAgreementResult> {
+  await delay(2500);
+  return {
+    txHash: `0x${randomHex(32)}`,
+  };
+}

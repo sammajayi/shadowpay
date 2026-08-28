@@ -74,7 +74,9 @@ export default function DashboardPage() {
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-body-sm font-medium text-ink">{agreement.item_description}</span>
-              <span className="text-eyebrow text-fog">{STATUS_LABEL[agreement.status]}</span>
+              <span className="text-eyebrow text-fog">
+                {agreement.onchain_closed_at ? "Closed" : STATUS_LABEL[agreement.status]}
+              </span>
             </div>
             <DataRow kind="private" label="Amount" value={`$${agreement.amount.toLocaleString()}`} />
             <DataRow kind="public" label="Agreement exists" value="true" />

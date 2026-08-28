@@ -16,14 +16,17 @@ onboarding, and the admin API. See `shadowpay-mvp-scope.md` section 4.
   witness payload for client-side proof generation.
 - **merchants** — Merchant/Vendor models, merchant-scoped and vendor-scoped API key
   auth (`Authorization: ApiKey <key>`).
-- **agreements** — orchestrates the createAgreement and recordPayment flows. Proof
-  generation happens client-side (the buyer's local secret key never reaches this
-  backend), so this app's job is: validate the purchase/payment, persist encrypted
-  off-chain metadata, hand back the witness payload, then record the on-chain result
-  once the frontend confirms it. `initiate_payment()` enforces installments are paid
-  in order (mirrors the same check the `recordPayment` circuit makes on-chain) and
-  auto-completes the agreement once all 4 are confirmed. See `agreements/services.py`
-  for the full rationale.
+- **agreements** — orchestrates the createAgreement, recordPayment, and
+  closeAgreement flows. Proof generation happens client-side (the buyer's local
+  secret key never reaches this backend), so this app's job is: validate the
+  purchase/payment/close, persist encrypted off-chain metadata, hand back the
+  witness payload, then record the on-chain result once the frontend confirms it.
+  `initiate_payment()` enforces installments are paid in order (mirrors the same
+  check the `recordPayment` circuit makes on-chain) and marks the agreement
+  `completed` once all 4 are confirmed; `initiate_close()` refuses to hand out a
+  closeAgreement witness payload until then, and refuses again once
+  `onchain_closed_at` is set (mirrors closeAgreement's own on-chain assertions).
+  See `agreements/services.py` for the full rationale.
 - **notifications** — repayment reminders via Resend.
 - **adminapi** — merchant/vendor onboarding queue, pool monitoring (aggregates only),
   dispute queue, risk-threshold config.

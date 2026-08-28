@@ -48,6 +48,14 @@ class InstallmentOutOfOrder(Exception):
     pass
 
 
+class AgreementNotReadyToClose(Exception):
+    pass
+
+
+class AgreementAlreadyClosed(Exception):
+    pass
+
+
 @dataclass(frozen=True)
 class CreateAgreementWitnessPayload:
     """Exactly the shape the frontend needs to answer the
@@ -177,3 +185,42 @@ def confirm_payment(*, payment: Payment, on_time: bool, tx_hash: str) -> Payment
         agreement.save(update_fields=["status"])
 
     return payment
+
+
+@dataclass(frozen=True)
+class CloseAgreementWitnessPayload:
+    """Same purchaseDetails()/agreementSalt() witnesses as
+    createAgreement/recordPayment, so closeAgreement recomputes the
+    identical agreementId — no separate 'which agreement' input."""
+
+    agreement_id: str  # off-chain PK
+    merchant_id: str
+    amount: int
+    installments: list[dict]
+    salt: str
+
+
+def initiate_close(*, agreement: Agreement) -> CloseAgreementWitnessPayload:
+    if agreement.onchain_closed_at:
+        raise AgreementAlreadyClosed(f"agreement {agreement.id} is already closed")
+    if agreement.status != Agreement.Status.COMPLETED:
+        raise AgreementNotReadyToClose(
+            f"agreement {agreement.id} is not ready to close — not all installments are paid"
+        )
+
+    return CloseAgreementWitnessPayload(
+        agreement_id=str(agreement.id),
+        merchant_id=agreement.merchant.onchain_merchant_id,
+        amount=agreement.get_amount(),
+        installments=agreement.get_installments(),
+        salt=agreement.salt,
+    )
+
+
+def confirm_close(*, agreement: Agreement, tx_hash: str) -> Agreement:
+    from django.utils import timezone
+
+    agreement.onchain_closed_at = timezone.now()
+    agreement.onchain_close_tx_hash = tx_hash
+    agreement.save(update_fields=["onchain_closed_at", "onchain_close_tx_hash"])
+    return agreement

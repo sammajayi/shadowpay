@@ -248,3 +248,39 @@ export circuit recordPayment(): Boolean {
 
   return paidOnTime;
 }
+
+// ============================================================
+// closeAgreement circuit.
+//
+// Proves all 4 installments were fulfilled and publishes
+// agreementExists[id] = false. Recomputes the same agreementId from
+// the same purchase/salt witnesses as createAgreement and
+// recordPayment, so — same as recordPayment — there is no separate
+// "which agreement" input to trust.
+//
+// installmentsPaid is already public (a count, not which installment
+// or its amount), so checking it against 4 costs no privacy beyond
+// what recordPayment already discloses.
+// ============================================================
+
+export circuit closeAgreement(): Boolean {
+  const buyerKey = userKey(localSecretKey());
+  const purchase = purchaseDetails();
+  const salt = agreementSalt();
+
+  const id = disclose(agreementId(AgreementCommitmentInput {
+    buyerKey: buyerKey,
+    merchantId: purchase.merchantId,
+    amount: purchase.amount,
+    installments: purchase.installments,
+    salt: salt,
+  }));
+  assert(agreementExists.member(id) && agreementExists.lookup(id), "agreement does not exist");
+
+  const paidCount = installmentsPaid.member(id) ? installmentsPaid.lookup(id) : 0;
+  assert(paidCount == 4, "not all installments have been paid");
+
+  agreementExists.insert(id, false);
+
+  return true;
+}
