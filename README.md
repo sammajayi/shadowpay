@@ -28,7 +28,17 @@ boundary (separate Vercel projects, separate auth scopes) and not just in-app ro
 - [x] `recordPayment` backend orchestration + repayment dashboard UI — smoke-tested (sequencing, on-time/late, agreement auto-completion)
 - [x] Merchant view (`/merchant`) — API-key auth, own stats + agreements + installment timeline, builds clean, backend endpoints verified with a real key
 - [x] Vendor view (`/vendor`) — API-key auth, roster + aggregate stats + payout reconciliation, all four endpoints verified with a real key
-- [ ] Admin view
+- [x] Admin view (`/admin`) — wallet-connect + role gate, pool monitoring, risk config, dispute queue, merchant/vendor onboarding, builds clean, endpoints verified (403 confirmed for a non-admin JWT)
+
+All Wave 1 build-order items are complete. Known gaps, tracked rather than hidden,
+each with a note at the point they matter: wallet-signature verification and the
+frontend's message-signing call are both placeholders pending real Lace integration
+(`backend/accounts/signature.py`, `frontend/src/lib/wallet.ts`); no circuit calls are
+wired to a real deployed contract yet, so `checkEligibility`/`createAgreement`/
+`recordPayment` proof generation is simulated client-side pending a testnet
+deployment (`frontend/src/lib/contract.ts`); merchant/vendor verification is tracked
+off-chain only, since there's no `registerMerchant` circuit (not one of the 4 in
+scope doc section 3) — see `backend/README.md`.
 
 ## Wave 2 (not built in Wave 1)
 
